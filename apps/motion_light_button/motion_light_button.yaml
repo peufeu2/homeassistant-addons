@@ -5,5 +5,19 @@ lumiere_escalier:
   name: lumiere_escalier
   sensor: binary_sensor.dm_escalier
   light: switch.r2_escalier_lumieres
-  delay: 120
+  motion_delay: 120
   button_delay: 3600
+  dependencies:
+    - shared
+    - shared_timeout
+lumiere_test:
+  module: motion_light_button
+  class: MotionLightButton
+  name: lumiere_test
+  sensor: switch.p2
+  light: switch.p1
+  motion_delay: 1
+  button_delay: 4
+  dependencies:
+    - shared
+    - shared_timeout
