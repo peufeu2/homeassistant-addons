@@ -1,0 +1,9 @@
+---
+lumiere_escalier:
+  module: motion_light_button
+  class: MotionLightButton
+  name: lumiere_escalier
+  sensor: binary_sensor.dm_escalier
+  light: switch.r2_escalier_lumieres
+  delay: 120
+  button_delay: 3600
