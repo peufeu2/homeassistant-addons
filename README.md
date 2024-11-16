@@ -1,2 +1,3 @@
-# homeassistant-addons
-My addons for home assistant and home automation
+# homeassistant-appdaemon-apps
+
+My AppDaemon apps for Home Assistant and home automation
