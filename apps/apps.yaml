@@ -1,0 +1,9 @@
+---
+grug_timeout:
+  module: grug_timeout
+  global: true
+shared:
+  module: shared
+  global: true
+  dependencies:
+    - grug_timeout
