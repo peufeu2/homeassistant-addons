@@ -1,17 +1,21 @@
 ---
-lumiere_escalier:
-  module: motion_light_button
-  class: MotionLightButton
-  name: lumiere_escalier
-  sensors:
-  #  - binary_sensor.dm_escalier
-    - binary_sensor.dm1_rc_palier_occupancy
-    - binary_sensor.dm2_etage_palier_occupancy
-    - binary_sensor.dm3_couloir_ouest_occupancy
-  light: switch.r2_escalier_lumieres
-  motion_delay: 120
-  button_delay: 3600
-  log_level: INFO
+#
+#   Example configuration
+#
+# lumiere_escalier:
+#   module: motion_light_button
+#   class: MotionLightButton
+#   name: lumiere_escalier
+#   sensors:
+#   #  - binary_sensor.dm_escalier
+#     - binary_sensor.dm1_rc_palier_occupancy
+#     - binary_sensor.dm2_etage_palier_occupancy
+#     - binary_sensor.dm3_couloir_ouest_occupancy
+#   light: switch.r2_escalier_lumieres
+#   motion_delay: 120
+#   button_delay: 3600
+#   timeout: 7200
+#   log_level: INFO
 # lumiere_test:
 #   module: motion_light_button
 #   class: MotionLightButton

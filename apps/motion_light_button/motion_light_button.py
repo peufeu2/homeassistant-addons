@@ -10,19 +10,20 @@ import grug_timeout
     light:          Light entity to control.
     motion_delay:   Time to keep the light on after motion is no longer detected
     button_delay:   Time to keep the light on after the button is pressed
+    timeout:        To turn off the light if the motion sensor stays stuck in ON state 
 
     set log_level DEBUG in this app's yaml config for logging.
 """
 class MotionLightButtonActor:
-    def __init__( self, api, name, sensors, light, motion_delay, button_delay, **kwargs ):
+    def __init__( self, api, name, sensors, light, **kwargs ):
         self.api    = api
         self.name   = name
         self.light  = light
-        self.motion_delay = motion_delay
-        self.button_delay = button_delay
+        self.args   = kwargs
 
-        self.timer = grug_timeout.DelayedCallback( api, self.light_off )
-        self.light_state_we_set = None # remember if it was us who set the light
+        self.timer = grug_timeout.DelayedCallback( api, self.light_off )    # normal timer to turn off the light
+        self.timeout = grug_timeout.DelayedCallback( api, self.light_off )  # stuck motion detector timeout
+        self.light_state_we_set = None      # remember if it was us who set the light
         
         self.sensor_state = {}
         self.sensors = sensors
@@ -30,12 +31,17 @@ class MotionLightButtonActor:
             api.listen_state( self.on_sensor, sensor )  # motion detector
         api.listen_state( self.on_light, light )    # relay state change from wired button
 
+        # if light is on at app start, remember to turn it off
+        if self.api.get_state( self.light ) == "on":
+            self.timer.set( self.args["button_delay"] )
+
     def cancel(self):
         self.timer.cancel()
     
     "Turn the light off and remember we turned it off"
     def light_off( self ):
         self.debug( "light_off" )
+        self.timeout.reset()
         self.light_state_we_set = "off"
         self.api.turn_off( self.light )
 
@@ -66,12 +72,14 @@ class MotionLightButtonActor:
         #   Any sensor state change to "occupancy on" will turn on the lights
         if new == "on":               # presence detected
             self.timer.cancel()       # stop countdown, this does not clear the expiry time
+            self.timeout.set( self.args["timeout"] )
             self.light_on()           # so the timer remembers if it was set by the button or sensor
 
         #   Turn off only when all sensors do not report "on" (ie, "off" or "unavailable")
-        elif "on" not in new_states and self.api.get_state( self.light ) == "on":
-            # Begin countdown. This will not shorten the timeout set by the button.
-            self.timer.at_least( self.motion_delay )
+        elif "on" not in new_states:
+            # if self.api.get_state( self.light ) == "on":
+            self.timeout.reset()      # cancel stuck motion detector timeout
+            self.timer.at_least( self.args["motion_delay"] )    # Begin countdown. This will not shorten the timeout set by the button.
 
     """
     Relay state change, either from zigbee command or pushbutton wired to relay input.
@@ -86,9 +94,11 @@ class MotionLightButtonActor:
         self.debug( "on_light %s (%s -> %s)", entity, old, new )
         if new == "on":
             # light turned on by button: prolong timeout by button_delay
-            self.timer.at_least( self.button_delay )
+            self.timeout.reset()
+            self.timer.at_least( self.args["button_delay"] )
         else:
             # light turned off by button. Cancel timer and reset expiry time.
+            self.timeout.reset()
             self.timer.reset()
 
     def debug( self, fmt, *args ):

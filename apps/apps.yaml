@@ -7,3 +7,69 @@ shared:
   global: true
   dependencies:
     - grug_timeout
+
+#
+#   Lumières à détecteur de mouvement
+#
+lumiere_escalier:
+  module: motion_light_button
+  class: MotionLightButton
+  name: lumiere_escalier
+  sensors:
+    #  - binary_sensor.dm_escalier
+    - binary_sensor.dm1_rc_palier_occupancy
+    - binary_sensor.dm2_etage_palier_occupancy
+    - binary_sensor.dm3_couloir_ouest_occupancy
+  light: switch.r2_escalier_lumieres
+  motion_delay: 120
+  button_delay: 3600
+  timeout: 7200
+  log_level: DEBUG
+
+# lumiere_test:
+#   module: motion_light_button
+#   class: MotionLightButton
+#   name: lumiere_test
+#   sensors:
+#     - input_boolean.test_toggle
+#     - input_boolean.test_toggle_2
+#   light: input_boolean.test_toggle_out
+#   motion_delay: 1
+#   button_delay: 3
+#   timeout: 10
+#   log_level: DEBUG
+
+lumiere_rc_pc:
+  module: motion_light_fade
+  class: MotionLightFade
+  name: lumiere_rc_pc
+  sensors:
+    - binary_sensor.dm1_rc_palier_occupancy
+    - input_boolean.test_toggle
+  light: light.rc_pc_tous_eclairages_zigbee
+  fade:
+    # First item specifies what happens on motion detection
+    # turn on the light with fade time and brightness
+    - fade_time: 2
+      brightness: 255
+      # ... wait for motion detector to clear ...
+      wait_time: 120 # wait for this time before next step
+    # subsequent steps do not wait for the motion detector to clear,
+    # as it has already cleared.
+    - fade_time: 2
+      brightness: 128
+      wait_time: 600
+    - fade_time: 2
+      brightness: 3
+      wait_time: 1800
+    - fade_time: 2
+      brightness: 1
+      wait_time: 1800
+    # if the last item has brightness zero, it will turn off the light
+    # otherwise it will stay on at the specified brightness
+    - fade_time: 2
+      brightness: 0
+      wait_time: 1
+
+  motion_delay: 20
+  log_level: DEBUG
