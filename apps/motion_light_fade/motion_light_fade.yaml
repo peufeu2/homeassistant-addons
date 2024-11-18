@@ -1,0 +1,13 @@
+---
+#
+#   Example configuration
+#
+# lumiere_rc_pc:
+#   module: motion_light_fade
+#   class: MotionLightFade
+#   name: lumiere_rc_pc
+#   sensors:
+#     - binary_sensor.dm1_rc_palier_occupancy
+#   light: light.rc_pc_tous_eclairages
+#   motion_delay: 20
+#   log_level: INFO
