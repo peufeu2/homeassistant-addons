@@ -24,7 +24,7 @@ lumiere_escalier:
   motion_delay: 120
   button_delay: 3600
   timeout: 7200
-  log_level: DEBUG
+  log_level: INFO
 
 # lumiere_test:
 #   module: motion_light_button
@@ -70,6 +70,5 @@ lumiere_rc_pc:
     - fade_time: 2
       brightness: 0
       wait_time: 1
-
   motion_delay: 20
-  log_level: DEBUG
+  log_level: INFO
