@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import appdaemon.plugins.hass.hassapi as hassapi
-import time, asyncio
+import time, asyncio, datetime, json
+
+import grug_persist
 
 MODULE_VERSION = 32
 
@@ -18,9 +20,10 @@ MODULE_VERSION = 32
     It is not reset when the timeout is expired or cancelled.
 
 """
-class DelayedCallback:
+class DelayedCallbackF:
     def __init__( self, api, callback ):
         self.api = api
+        api.depends_on_module( grug_persist )
         self.callback = callback
         self.timer = None       # If timer is not None, the timer is running and will trigger the callback
         self.expiry = 0         # Expiry is zero when canceled.
@@ -125,6 +128,153 @@ class DelayedCallback:
         self.timer = None
         self.callback()
     
+    def debug( self, fmt, *args ):
+        self.debug( fmt, *args, level="DEBUG" )
+
+"""
+    Same as DelayedCallbackF, with all times stored in UTC.
+    This is to save it to a file and reload it after reboot, 
+    can't do that with time.monotonic()
+"""
+class DelayedCallback( grug_persist.PersistMixin ):
+    def __init__( self, api, callback, entity_storage_id = None ):
+        self.api = api
+        self.callback = callback
+        self.timer = None       # If timer is not None, the timer is running and will trigger the callback
+        self.expiry = None      # Expiry is None when canceled.
+        self.start_ts = None  # Used to know for how long the timeout has been running. 
+        self.entity_storage_id = entity_storage_id
+        api.log("DelayedCallback V%s", MODULE_VERSION)
+    """
+        True if the timeout's callback will trigger in the future.
+        False if cancelled or paused.
+    """
+    def running( self ):
+        return bool( self.timer )
+
+    """
+        Remaining time in seconds.
+        0 if cancelled or expired.
+    """
+    def remaining( self ):
+        if self.expiry:
+            return (self.expiry - self.api.get_now()).total_seconds()
+        else:
+            return 0
+
+    """
+        Time elapsed since the start of the timeout, in seconds.
+    """
+    def elapsed( self ):
+        if self.start_ts:
+            return (self.api.get_now() - self.start_ts).total_seconds()
+        else:
+            return None
+
+    """
+        Start or prolong the timeout, ensuring it will expire *at least* in "duration" seconds.
+        Returns the amount of time remaining.
+    """
+    def at_least( self, duration ):
+        expiry = self.api.get_now() + datetime.timedelta(seconds=duration)
+        if self.expiry and self.expiry > expiry:
+            return self.expire_at( self.expiry )
+        else:
+            return self.expire_at( expiry )
+
+    """
+        Shortens the timeout, ensuring it will expire *at most* in "duration" seconds.
+        Returns the amount of time remaining.
+    """
+    def at_most( self, duration ):
+        expiry = self.api.get_now() + datetime.timedelta(seconds=duration)
+        if self.timer:
+            # If timeout was running, and more time remains than duration parameter, shorten it .
+            return self.expire_at( min( self.expiry, expiry ))
+        else:
+            # If timeout was not running, start it with duration parameter.
+            return self.expire_at( expiry )
+
+    """
+        If timeout is not active, start it with the specified duration.
+        If it was already running, adjust the duration.
+        Returns the amount of time remaining.
+    """
+    def set( self, duration ):
+        return self.expire_at( self.api.get_now() + datetime.timedelta(seconds=duration) )
+
+    """
+        If timeout is not active, start it with the specified expiry time.
+        If it was already running:
+            ... with a different expiry time, cancel it and restart it with the new expiry.
+            ... with the same expiry time, just let it run.
+        Returns the amount of time remaining.
+    """
+    def expire_at( self, expiry ):
+        now = self.api.get_now()
+        if self.timer:                      # timeout is active
+            if self.expiry == expiry:       # no change in expiry time: just return
+                return (expiry - now).total_seconds()
+            self.cancel()                   # cancel timeout to change the expiry
+        else:
+            self.start_ts = now             # set start_ts only of we do not modify a running timeout
+        duration = (expiry - now).total_seconds()
+        if expiry <= now:                   # expiry is in the past, don't bother with the timer
+            self.debug("DelayedCallback.expire_at: Direct callback %s", duration)
+            self.callback()
+            return 0
+        else:
+            self.debug("DelayedCallback.expire_at: Timer set to %s", duration)
+            self.expiry = expiry
+            self.timer = self.api.run_at( self._timer_callback, expiry )
+            self.save()
+            return duration
+
+    """
+        Cancels the timeout.
+        Does not call the callback.
+    """
+    def cancel( self ):
+        self.debug("DelayedCallback: Cancel timer %s", self.timer)
+        if self.timer:
+            self.api.cancel_timer( self.timer )
+            self.timer = None
+            self.save()
+
+    """
+        Forget the expiry time so this timeout can no longer be extended
+    """
+    def reset( self ):
+        self.cancel()
+        self.expiry = None
+        self.save()
+
+    """
+        Called by the API timer when the timeout expires.
+    """
+    def _timer_callback( self, kwargs ):
+        self.timer = None
+        self.save()
+        self.callback()
+    
+    def debug( self, fmt, *args ):
+        self.debug( fmt, *args, level="DEBUG" )
+    
+    def save( self ):
+        state = "on" if self.timer else "off"
+        attrs = { k:getattr( self, k ) for k in ("start_ts", "expiry") }
+        self._save( state, attrs )
+
+    def load( self ):
+        state, attrs = self._load()
+        if state == None:
+            return self.reset()
+        else:
+            self.start_ts = attrs["start_ts"]
+            self.expiry   = attrs["expiry"]
+            if state == "on":
+                self.expire_at( self.expiry )
+
     def debug( self, fmt, *args ):
         self.api.log( fmt, *args, level="DEBUG" )
 

@@ -2,11 +2,15 @@
 grug_timeout:
   module: grug_timeout
   global: true
+grug_persist:
+  module: grug_persist
+  global: true
 shared:
   module: shared
   global: true
   dependencies:
     - grug_timeout
+    - grug_persist
 
 #
 #   Lumières à détecteur de mouvement
@@ -26,18 +30,18 @@ lumiere_escalier:
   timeout: 7200
   log_level: INFO
 
-# lumiere_test:
-#   module: motion_light_button
-#   class: MotionLightButton
-#   name: lumiere_test
-#   sensors:
-#     - input_boolean.test_toggle
-#     - input_boolean.test_toggle_2
-#   light: input_boolean.test_toggle_out
-#   motion_delay: 1
-#   button_delay: 3
-#   timeout: 10
-#   log_level: DEBUG
+lumiere_test:
+  module: motion_light_button
+  class: MotionLightButton
+  name: lumiere_test
+  sensors:
+    - input_boolean.test_toggle
+    - input_boolean.test_toggle_2
+  light: input_boolean.test_toggle_out
+  motion_delay: 1
+  button_delay: 3
+  timeout: 10
+  log_level: INFO
 
 lumiere_rc_pc:
   module: motion_light_fade
@@ -58,17 +62,17 @@ lumiere_rc_pc:
     # as it has already cleared.
     - fade_time: 2
       brightness: 128
-      wait_time: 600
+      wait_time: 300
     - fade_time: 2
       brightness: 3
-      wait_time: 1800
+      wait_time: 300
     - fade_time: 2
       brightness: 1
-      wait_time: 1800
+      wait_time: 300
     # if the last item has brightness zero, it will turn off the light
     # otherwise it will stay on at the specified brightness
     - fade_time: 2
       brightness: 0
       wait_time: 1
   motion_delay: 20
-  log_level: INFO
+  log_level: DEBUG

@@ -14,15 +14,19 @@ import grug_timeout
 
     set log_level DEBUG in this app's yaml config for logging.
 """
+
 class MotionLightButtonActor:
     def __init__( self, api, name, sensors, light, **kwargs ):
         self.api    = api
         self.name   = name
         self.light  = light
         self.args   = kwargs
+        self.api.set_namespace( "userapps" )
 
-        self.timer = grug_timeout.DelayedCallback( api, self.light_off )    # normal timer to turn off the light
-        self.timeout = grug_timeout.DelayedCallback( api, self.light_off )  # stuck motion detector timeout
+        self.timer = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timer" )    # normal timer to turn off the light
+        self.timeout = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timeout" )  # stuck motion detector timeout
+        self.timer.load()
+        self.timeout.load()
         self.light_state_we_set = None      # remember if it was us who set the light
         
         self.sensor_state = {}
@@ -68,7 +72,7 @@ class MotionLightButtonActor:
         self.sensor_state[ entity ] = new
         new_states = [ self.sensor_state.get(id) for id in self.sensors ]
         self.debug( "on_sensor %s (%s -> %s) states %s -> %s", entity, old, new, old_states, new_states )
-        
+      
         #   Any sensor state change to "occupancy on" will turn on the lights
         if new == "on":               # presence detected
             self.timer.cancel()       # stop countdown, this does not clear the expiry time
