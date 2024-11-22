@@ -33,7 +33,10 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
         # ... then load the saved timer expiration
         self.timer.load()
 
-    def cancel( self ):
+    def initialize( self ):
+        pass
+
+    def terminate( self ):
         self.timer.cancel()
 
     def reset( self ):
@@ -71,7 +74,16 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
     """
     def on_sensor( self, entity, attribute, old, new, kwargs ):
         #   Any sensor state change to "occupancy on" will turn on the lights
-        if new == "on":              # presence detected
+        old_states = [ self.sensor_state.get(id) for id in self.sensors ]
+        self.sensor_state[ entity ] = new
+        new_states = [ self.sensor_state.get(id) for id in self.sensors ]
+        self.debug( "on_sensor %s (%s -> %s) states %s -> %s", entity, old, new, old_states, new_states )
+      
+        #   Any sensor state change to "occupancy on" will turn on the lights
+        if new == "on":
+            self.do_fade(0)
+        #   Turn off only when all sensors do not report "on" (ie, "off" or "unavailable")
+        elif "on" not in new_states:
             self.light_on()
 
     def debug( self, fmt, *args ):
@@ -97,10 +109,10 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
 class MotionLightFade(hassapi.Hass):
     def initialize(self):
         self.depends_on_module( grug_timeout )
-        self.depends_on_module( grug_persist )
         self.__actor = MotionLightFadeActor( self, self.args )
+        self.__actor.initialize()
 
     def cancel(self):
-        self.__actor.cancel()
+        self.__actor.terminate()
 
 

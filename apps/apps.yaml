@@ -12,8 +12,26 @@ shared:
     - grug_timeout
     - grug_persist
 
+charge_techno_placard:
+  module: multi_timer
+  class: MultiTimer
+  name: charge_techno_placard
+  output: switch.p4_rc_pf_sejour_techno_placard
+  topics:
+    "z2m/b5/action":      # button action topic
+      1_single:
+        on_time: 3600        # can specify on_time (seconds) or off
+      2_single:
+        on_time: 7200
+      3_single:
+        on_time: 14400
+      4_single:
+        on_time: 100000
+#        state: "off"
+  log_level: INFO
+
 #
-#   Lumières à détecteur de mouvement
+#   Lumières à détecteur de mouvement : escalier
 #
 lumiere_escalier:
   module: motion_light_button
@@ -30,49 +48,78 @@ lumiere_escalier:
   timeout: 7200
   log_level: INFO
 
-lumiere_test:
-  module: motion_light_button
-  class: MotionLightButton
-  name: lumiere_test
-  sensors:
-    - input_boolean.test_toggle
-    - input_boolean.test_toggle_2
-  light: input_boolean.test_toggle_out
-  motion_delay: 1
-  button_delay: 3
-  timeout: 10
-  log_level: INFO
+#
+#   Lumières à détecteur de mouvement : TEST
+#   avec des faux boutons dans le dash
+#
+# lumiere_test:
+#   module: motion_light_button
+#   class: MotionLightButton
+#   name: lumiere_test
+#   sensors:
+#     - input_boolean.test_toggle
+#     - input_boolean.test_toggle_2
+#   light: input_boolean.test_toggle_out
+#   motion_delay: 1
+#   button_delay: 3
+#   timeout: 10
+#   log_level: INFO
 
-lumiere_rc_pc:
+#
+#   Lumières à détecteur de mouvement : RC PC
+#
+default_fade: &default_fade
+  # First item specifies what happens on motion detection
+  # turn on the light with fade time and brightness
+  - fade_time: 0.5
+    brightness: 255
+    # ... wait for motion detector to clear ...
+    wait_time: 120 # wait for this time before next step
+  # subsequent steps do not wait for the motion detector to clear,
+  # as it has already cleared.
+  - fade_time: 2
+    brightness: 128
+    wait_time: 300
+  - fade_time: 2
+    brightness: 3
+    wait_time: 300
+  - fade_time: 2
+    brightness: 1
+    wait_time: 300
+  # if the last item has brightness zero, it will turn off the light
+  # otherwise it will stay on at the specified brightness
+  - fade_time: 2
+    brightness: 0
+    wait_time: 1
+
+lumiere_rc_pc_entree:
   module: motion_light_fade
   class: MotionLightFade
-  name: lumiere_rc_pc
+  name: lumiere_rc_pc_entree
   sensors:
     - binary_sensor.dm1_rc_palier_occupancy
-    - input_boolean.test_toggle
-  light: light.rc_pc_tous_eclairages_zigbee
-  fade:
-    # First item specifies what happens on motion detection
-    # turn on the light with fade time and brightness
-    - fade_time: 2
-      brightness: 255
-      # ... wait for motion detector to clear ...
-      wait_time: 120 # wait for this time before next step
-    # subsequent steps do not wait for the motion detector to clear,
-    # as it has already cleared.
-    - fade_time: 2
-      brightness: 128
-      wait_time: 300
-    - fade_time: 2
-      brightness: 3
-      wait_time: 300
-    - fade_time: 2
-      brightness: 1
-      wait_time: 300
-    # if the last item has brightness zero, it will turn off the light
-    # otherwise it will stay on at the specified brightness
-    - fade_time: 2
-      brightness: 0
-      wait_time: 1
-  motion_delay: 20
-  log_level: DEBUG
+    - binary_sensor.dm4_occupancy
+  light: light.ampoule_ikea_4
+  fade: *default_fade
+  log_level: INFO
+
+lumiere_rc_pc_salle_a_manger:
+  module: motion_light_fade
+  class: MotionLightFade
+  name: lumiere_rc_pc_salle_a_manger
+  sensors:
+    - binary_sensor.dm5_occupancy
+    - binary_sensor.dm6_occupancy
+  light: light.rc_pc_lumiere_salle_a_manger
+  fade: *default_fade
+  log_level: INFO
+
+lumiere_rc_pc_sejour:
+  module: motion_light_fade
+  class: MotionLightFade
+  name: lumiere_rc_pc_sejour
+  sensors:
+    - binary_sensor.dm7_occupancy
+  light: light.ampoule_ikea_5
+  fade: *default_fade
+  log_level: INFO

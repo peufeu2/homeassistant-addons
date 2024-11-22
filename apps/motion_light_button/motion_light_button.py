@@ -39,7 +39,10 @@ class MotionLightButtonActor:
         if self.api.get_state( self.light ) == "on":
             self.timer.set( self.args["button_delay"] )
 
-    def cancel(self):
+    def initialize( self ):
+        pass
+
+    def terminate(self):
         self.timer.cancel()
     
     "Turn the light off and remember we turned it off"
@@ -115,8 +118,8 @@ class MotionLightButton(hassapi.Hass):
     def initialize(self):
         self.depends_on_module( grug_timeout )
         self.__actor = MotionLightButtonActor( self, **self.args )
+        self.__actor.initialize()
 
-    def cancel(self):
-        self.__actor.cancel()
-
+    def terminate(self):
+        self.__actor.terminate()
 
