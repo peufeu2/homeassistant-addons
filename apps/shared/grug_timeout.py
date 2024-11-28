@@ -6,8 +6,6 @@ import time, asyncio, datetime, json
 
 import grug_persist
 
-MODULE_VERSION = 32
-
 """
     Calls the callback at the end of the timeout.
     Timeout can be cancelled, prolonged, shortened.
@@ -28,7 +26,6 @@ class DelayedCallbackF:
         self.timer = None       # If timer is not None, the timer is running and will trigger the callback
         self.expiry = 0         # Expiry is zero when canceled.
         self.start_time = None  # Used to know for how long the timeout has been running. 
-        api.log("DelayedCallback V%s", MODULE_VERSION)
 
     """
         True if the timeout's callback will trigger in the future.
@@ -144,7 +141,7 @@ class DelayedCallback( grug_persist.PersistMixin ):
         self.expiry = None      # Expiry is None when canceled.
         self.start_ts = None  # Used to know for how long the timeout has been running. 
         self.entity_storage_id = entity_storage_id
-        api.log("DelayedCallback V%s", MODULE_VERSION)
+
     """
         True if the timeout's callback will trigger in the future.
         False if cancelled or paused.
@@ -158,7 +155,7 @@ class DelayedCallback( grug_persist.PersistMixin ):
     """
     def remaining( self ):
         if self.expiry:
-            return (self.expiry - self.api.get_now()).total_seconds()
+            return max( 0, (self.expiry - self.api.get_now()).total_seconds() )
         else:
             return 0
 

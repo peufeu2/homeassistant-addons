@@ -16,13 +16,13 @@ charge_techno_placard:
   module: multi_timer
   class: MultiTimer
   name: charge_techno_placard
-  output: switch.p4_rc_pf_sejour_techno_placard
-  topics:
-    "z2m/b5/action":      # button action topic
-      1_single:
-        on_time: 3600        # can specify on_time (seconds) or off
+  output_switch: switch.p4_rc_pf_techno_placard
+  trigger_topics:
+    "z2m/b5_rc_pf_techno_placard/action":      # button action topic
+      1_single:           # action
+        on_time: 3600     # can specify on_time (seconds), 0 for off
       2_single:
-        on_time: 7200
+        on_time: 7201
       3_single:
         on_time: 14400
       4_single:
@@ -40,8 +40,8 @@ lumiere_escalier:
   sensors:
     #  - binary_sensor.dm_escalier
     - binary_sensor.dm1_rc_palier_occupancy
-    - binary_sensor.dm2_etage_palier_occupancy
-    - binary_sensor.dm3_couloir_ouest_occupancy
+    - binary_sensor.dm8_etage_palier_occupancy
+    - binary_sensor.dm9_couloir_ouest_occupancy
   light: switch.r2_escalier_lumieres
   motion_delay: 120
   button_delay: 3600

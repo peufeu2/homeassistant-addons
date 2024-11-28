@@ -21,12 +21,12 @@ class MotionLightButtonActor:
         self.name   = name
         self.light  = light
         self.args   = kwargs
-        self.api.set_namespace( "userapps" )
 
-        self.timer = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timer" )    # normal timer to turn off the light
+        self.timer = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timer" )      # normal timer to turn off the light
         self.timeout = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timeout" )  # stuck motion detector timeout
-        self.timer.load()
-        self.timeout.load()
+        self.timer.load()       # load() may call the callback if timer expired, so both timers have to be
+        self.timeout.load()     # initialized before calling load()
+        self.api.log("Timer remaining: %ss Timeout remaining: %ss", self.timer.remaining(), self.timeout.remaining())
         self.light_state_we_set = None      # remember if it was us who set the light
         
         self.sensor_state = {}

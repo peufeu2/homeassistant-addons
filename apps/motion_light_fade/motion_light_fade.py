@@ -29,6 +29,7 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
         # Load first, it will set timer to default value
         self.entity_storage_id   = self.name + ".storage"
         self.load()
+        self.api.log( "Timer remaining: %ss step:%s", self.timer.remaining(), self.step )
 
         # ... then load the saved timer expiration
         self.timer.load()
@@ -55,11 +56,12 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
         self.save()
 
     "Turn the light on"
-    def light_on( self, step=0 ):
-        self.debug( "################################## light_on" )
+    def light_on( self, step=0, start_timer=True ):
+        self.debug( "################################## light_on %s", start_timer )
         step = min(max(0,step), len(self.fade_list)-1)
         self.fade_iter = iter(range( step+1, len( self.fade_list )))
-        self.timer.set( self.fade_list[step]["wait_time"] )
+        if start_timer:
+            self.timer.set( self.fade_list[step]["wait_time"] )
         self.do_fade( step )
 
     "Proceed to the list of brightness and wait times"
@@ -81,10 +83,11 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
       
         #   Any sensor state change to "occupancy on" will turn on the lights
         if new == "on":
-            self.do_fade(0)
+            self.timer.reset()  # stay on as long as motion is detected
+            self.light_on( start_timer=False )
         #   Turn off only when all sensors do not report "on" (ie, "off" or "unavailable")
         elif "on" not in new_states:
-            self.light_on()
+            self.light_on( )
 
     def debug( self, fmt, *args ):
         self.api.log( fmt, *args, level="DEBUG" )
@@ -96,7 +99,7 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
 
     def load( self ):
         state, attrs = self._load()
-        if state == None or state == "off":
+        if state in (None, "off"):
             return self.reset()
         else:
             step = attrs["step"]

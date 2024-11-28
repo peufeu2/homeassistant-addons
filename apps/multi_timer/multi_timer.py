@@ -4,47 +4,22 @@ import grug_timeout #, grug_gmqtt
 # importlib.reload( shared.timeout )
 
 """
-    Motion activated light with extra button.
-
-    sensors:        A list of motion sensors, as HA entities.
-    light:          Light entity to control.
-    motion_delay:   Time to keep the light on after motion is no longer detected
-    button_delay:   Time to keep the light on after the button is pressed
-    timeout:        To turn off the light if the motion sensor stays stuck in ON state 
-
-    set log_level DEBUG in this app's yaml config for logging.
+    Multi-button scene controller -> one timer per button -> switch
 """
-
 class MultiTimerActor:
     def __init__( self, api ):
         self.api  = api
         self.args = api.args
         self.name = self.args["name"]
-        self.topics = api.args["topics"]
-        self.output = api.args["output"]
+        self.trigger_topics = api.args["trigger_topics"]
+        self.output_switch  = api.args["output_switch"]
         self.output_state_we_set = None
-        self.api.log("TOPICS: %s", self.topics)
-        self.api.listen_state( self.on_output_changed, self.output )
+        self.debug("Output: %s Triggers: %s", self.output_switch, self.trigger_topics)
 
-        self.api.set_namespace( "userapps" )
-
+        self.api.listen_state( self.on_output_changed, self.output_switch )
         self.timer = grug_timeout.DelayedCallback( api, self.timer_callback, self.name+".timer" )
-
-        # self.timer = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timer" )    # normal timer to turn off the light
-        # self.timeout = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timeout" )  # stuck motion detector timeout
-        # self.timer.load()
-        # self.timeout.load()
-        # self.light_state_we_set = None      # remember if it was us who set the light
-        
-        # self.sensor_state = {}
-        # self.sensors = sensors
-        # for sensor in sensors:
-        #     api.listen_state( self.on_sensor, sensor )  # motion detector
-        # api.listen_state( self.on_light, light )    # relay state change from wired button
-
-        # # if light is on at app start, remember to turn it off
-        # if self.api.get_state( self.light ) == "on":
-        #     self.timer.set( self.args["button_delay"] )
+        self.timer.load()
+        self.api.log("Timer remaining: %s s", self.timer.remaining())
 
     def debug( self, fmt, *args ):
         self.api.log( fmt, *args, level="DEBUG" )
@@ -55,7 +30,7 @@ class MultiTimerActor:
 
     def initialize( self ):
         self.mqtt = self.api.get_plugin_api("MQTT")
-        for topic in self.topics:
+        for topic in self.trigger_topics:
             self.mqtt.listen_event(self.mqtt_message_received_event, "MQTT_MESSAGE", topic=topic )
         if not self.mqtt.is_client_connected():
             self.api.log('### MQTT is not connected')
@@ -64,25 +39,25 @@ class MultiTimerActor:
         # self.api.log( "%s", { "eventname":eventname, "data":data, "kwargs":kwargs } )
         topic = data["topic"]
         payload = data["payload"]
-        if not (d := self.topics.get( topic )):
+        if not (trigger_actions := self.trigger_topics.get( topic )):
             return self.debug( "Topic %r is not configured.", topic )
-        if not (a := d.get( payload )):
+        if not (action := trigger_actions.get( payload )):
             return self.debug( "Topic %r Payload %r is not configured.", topic, payload )
-        if state := a.get("state"):
+        if state := action.get("state"):
             self.timer.reset()
             if state == "off":
                 self.output_state_we_set = "off"
-                self.api.turn_off( self.output )
+                self.api.turn_off( self.output_switch )
             elif state == "on":
                 self.output_state_we_set = "on"
-                self.api.turn_on( self.output )
-        elif on_time := a.get( "on_time" ):
+                self.api.turn_on( self.output_switch )
+        elif on_time := action.get( "on_time" ):
             self.output_state_we_set = "on"
-            self.api.turn_on( self.output )
+            self.api.turn_on( self.output_switch )
             self.timer.set( on_time )
 
     def timer_callback( self ):
-        self.api.turn_off( self.output )
+        self.api.turn_off( self.output_switch )
 
     def on_output_changed( self, entity, attribute, old, new, kwargs ):
         if new == self.output_state_we_set:
