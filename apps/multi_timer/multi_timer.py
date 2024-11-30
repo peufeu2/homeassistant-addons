@@ -40,20 +40,23 @@ class MultiTimerActor:
         topic = data["topic"]
         payload = data["payload"]
         if not (trigger_actions := self.trigger_topics.get( topic )):
-            return self.debug( "Topic %r is not configured.", topic )
+            return self.api.log( "Topic %r is not configured.", topic )
         if not (action := trigger_actions.get( payload )):
-            return self.debug( "Topic %r Payload %r is not configured.", topic, payload )
+            return self.api.log( "Topic %r Payload %r is not configured.", topic, payload )
         if state := action.get("state"):
             self.timer.reset()
             if state == "off":
                 self.output_state_we_set = "off"
+                self.api.log( "OFF by button" )
                 self.api.turn_off( self.output_switch )
             elif state == "on":
                 self.output_state_we_set = "on"
+                self.api.log( "ON by button" )
                 self.api.turn_on( self.output_switch )
         elif on_time := action.get( "on_time" ):
             self.output_state_we_set = "on"
             self.api.turn_on( self.output_switch )
+            self.api.log( "ON for %ss", on_time )
             self.timer.set( on_time )
 
     def timer_callback( self ):
@@ -66,7 +69,7 @@ class MultiTimerActor:
         
         # Manual control: cancel timer
         self.output_state_we_set = None
-        self.debug( "on_output_changed %s (%s -> %s)", entity, old, new )
+        self.api.log( "%s: %s -> %s", entity, old, new )
         self.timer.reset()
 
 #   Using separate class here, to avoid conflicts between hassapi.Hass

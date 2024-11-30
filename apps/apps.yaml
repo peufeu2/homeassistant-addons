@@ -45,7 +45,7 @@ lumiere_escalier:
   light: switch.r2_escalier_lumieres
   motion_delay: 120
   button_delay: 3600
-  timeout: 7200
+  timeout: 20000
   log_level: INFO
 
 #
@@ -76,7 +76,6 @@ default_fade: &default_fade
     # ... wait for motion detector to clear ...
     wait_time: 120 # wait for this time before next step
   # subsequent steps do not wait for the motion detector to clear,
-  # as it has already cleared.
   - fade_time: 2
     brightness: 128
     wait_time: 300

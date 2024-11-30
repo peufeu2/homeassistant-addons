@@ -50,14 +50,16 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
             self.debug("fade: %s", fade)
             self.api.turn_on( self.light, brightness=fade["brightness"], transition=fade["fade_time"] )
         else:
-            self.debug("light off")
-            self.api.turn_off( self.light, transition=fade["fade_time"] )
+            self.api.log("OFF")
+            self.api.turn_off( self.light )
         self.step = step
         self.save()
 
     "Turn the light on"
-    def light_on( self, step=0, start_timer=True ):
-        self.debug( "################################## light_on %s", start_timer )
+    def light_on( self, step=0, start_timer=True, reason="" ):
+        if self.api.get_state( self.light ) != "on":
+            self.api.log( "ON %s", reason )
+        self.debug( "light_on %s", start_timer )
         step = min(max(0,step), len(self.fade_list)-1)
         self.fade_iter = iter(range( step+1, len( self.fade_list )))
         if start_timer:
@@ -84,7 +86,7 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
         #   Any sensor state change to "occupancy on" will turn on the lights
         if new == "on":
             self.timer.reset()  # stay on as long as motion is detected
-            self.light_on( start_timer=False )
+            self.light_on( start_timer=False, reason="from sensor" )
         #   Turn off only when all sensors do not report "on" (ie, "off" or "unavailable")
         elif "on" not in new_states:
             self.light_on( )
@@ -104,7 +106,7 @@ class MotionLightFadeActor( grug_persist.PersistMixin ):
         else:
             step = attrs["step"]
             if state == "on":
-                self.light_on( step )
+                self.light_on( step, reason="from load" )
 
 #   Using separate class here, to avoid conflicts between hassapi.Hass
 #   member functions and variable and our own class stuff.

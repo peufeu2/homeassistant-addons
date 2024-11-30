@@ -22,8 +22,8 @@ class MotionLightButtonActor:
         self.light  = light
         self.args   = kwargs
 
-        self.timer = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timer" )      # normal timer to turn off the light
-        self.timeout = grug_timeout.DelayedCallback( api, self.light_off, self.name+".timeout" )  # stuck motion detector timeout
+        self.timer = grug_timeout.DelayedCallback( api, lambda: self.light_off("Timer"), self.name+".timer" )      # normal timer to turn off the light
+        self.timeout = grug_timeout.DelayedCallback( api, lambda: self.light_off("Timeout"), self.name+".timeout" )  # stuck motion detector timeout
         self.timer.load()       # load() may call the callback if timer expired, so both timers have to be
         self.timeout.load()     # initialized before calling load()
         self.api.log("Timer remaining: %ss Timeout remaining: %ss", self.timer.remaining(), self.timeout.remaining())
@@ -46,15 +46,21 @@ class MotionLightButtonActor:
         self.timer.cancel()
     
     "Turn the light off and remember we turned it off"
-    def light_off( self ):
-        self.debug( "light_off" )
+    def light_off( self, reason="" ):
+        if self.api.get_state( self.light ) != "off":
+            self.api.log( "OFF %s", reason )
+        else:
+            self.debug( "OFF %s", reason )
         self.timeout.reset()
         self.light_state_we_set = "off"
         self.api.turn_off( self.light )
 
     "Turn the light on and remember we turned it on"
-    def light_on( self ):
-        self.debug( "light_on" )
+    def light_on( self, reason="" ):
+        if self.api.get_state( self.light ) != "on":
+            self.api.log( "ON %s", reason )
+        else:
+            self.debug( "ON %s", reason )
         self.light_state_we_set = "on"
         self.api.turn_on( self.light )
     
@@ -80,13 +86,14 @@ class MotionLightButtonActor:
         if new == "on":               # presence detected
             self.timer.cancel()       # stop countdown, this does not clear the expiry time
             self.timeout.set( self.args["timeout"] )
-            self.light_on()           # so the timer remembers if it was set by the button or sensor
+            self.light_on( "from sensor" )           # so the timer remembers if it was set by the button or sensor
 
         #   Turn off only when all sensors do not report "on" (ie, "off" or "unavailable")
         elif "on" not in new_states:
             # if self.api.get_state( self.light ) == "on":
             self.timeout.reset()      # cancel stuck motion detector timeout
             self.timer.at_least( self.args["motion_delay"] )    # Begin countdown. This will not shorten the timeout set by the button.
+            self.api.log( "Timer %ss", self.timer.remaining() )
 
     """
     Relay state change, either from zigbee command or pushbutton wired to relay input.
@@ -98,7 +105,7 @@ class MotionLightButtonActor:
         
         # Relay state change is from pushbutton wired to relay input.
         self.light_state_we_set = None
-        self.debug( "on_light %s (%s -> %s)", entity, old, new )
+        self.api.log( "%s: %s -> %s", entity, old, new )
         if new == "on":
             # light turned on by button: prolong timeout by button_delay
             self.timeout.reset()
